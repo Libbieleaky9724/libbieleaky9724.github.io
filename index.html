@@ -369,6 +369,41 @@
 
 
 <script>
+const ITEMS_URL = 'https://dcmanmwem.github.io/items.json';
+let ITEM_NAMES = {};
+let itemNamesLoaded = false;
+
+async function loadItemNames(){
+  try{
+    const res = await fetch(ITEMS_URL, { cache: 'no-store' });
+    if(!res.ok) throw new Error(`Сервер ответил статусом ${res.status}`);
+    const json = await res.json();
+    // Поддерживаем разные возможные форматы items.json:
+    // { "123": "Название", ... }  или  [{ "id": 123, "name": "Название" }, ...]
+    if(Array.isArray(json)){
+      json.forEach(it => {
+        if(it && (it.id !== undefined) && (it.name !== undefined)){
+          ITEM_NAMES[String(it.id)] = it.name;
+        }
+      });
+    } else if(json && typeof json === 'object'){
+      Object.keys(json).forEach(k => {
+        const v = json[k];
+        ITEM_NAMES[String(k)] = (typeof v === 'string') ? v : (v && v.name) ? v.name : null;
+      });
+    }
+    itemNamesLoaded = true;
+    // Перерисовываем таблицу и карточку предмета, если данные уже были загружены
+    if(rows.length){ applyFilters(); }
+  }catch(err){
+    console.error('Не удалось загрузить items.json:', err);
+  }
+}
+loadItemNames();
+function itemName(id){
+  return ITEM_NAMES[String(id)] || null;
+}
+
 
 const API_BASE = "https://orange-mouse-a8e4.ermremvalawe-kaemawem.workers.dev";
 const API_URL = API_BASE + "/x/fp2xyqt1vc";
@@ -538,7 +573,7 @@ function render(){
     g.lots.forEach(r => {
       html += `<tr class="seller-sub-row${isOpen?' visible':''}">
         <td class="seller">${escapeHtml(r.username)}</td>
-        <td><span class="item-id">#${r.itemId}</span>${r.ench ? `<span class="ench">+${r.ench}</span>` : ''}</td>
+        <td>${(()=>{const n=itemName(r.itemId);return n?`<span class="item-id">${escapeHtml(n)}</span>${r.ench?`<span class="ench">+${r.ench}</span>`:''}<br><span style="color:var(--text-dim);font-size:10px">#${r.itemId}</span>`:`<span class="item-id">#${r.itemId}</span>${r.ench?`<span class="ench">+${r.ench}</span>`:''}`;})()} </td>
         <td><span class="badge ${r.type}">${r.type === 'sell' ? 'продажа' : 'скупка'}</span></td>
         <td class="price">${fmtPrice(r.price)}</td>
         <td class="qty">${fmtQty(r.count)}</td>
