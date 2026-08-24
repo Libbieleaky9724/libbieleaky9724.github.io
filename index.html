@@ -670,6 +670,34 @@ async function apiGet(path){
   return res.json();
 }
 
+const FIELD_LABELS = {
+  item_id: 'ID предмета',
+  base_id: 'Базовый ID',
+  used_item_id: 'ID предмета',
+  name: 'Название',
+  side: 'Тип сделки',
+  days: 'Период (дней)',
+  mode: 'Режим цены',
+  avg_price: 'Средняя цена',
+  step: 'Шаг',
+  market_price: 'Рыночная цена',
+  median: 'Медиана',
+  median_unique: 'Медиана (уник.)',
+  wmedian: 'Взвеш. медиана',
+  mean: 'Среднее',
+  min: 'Минимум',
+  max: 'Максимум',
+  lots: 'Лотов',
+  volume: 'Объём',
+  is_massive: 'Массовый спрос',
+  ts: 'Время',
+  t: 'Дата/время'
+};
+
+function labelFor(key){
+  return FIELD_LABELS[key] || key;
+}
+
 function renderKV(container, obj){
   if(obj === null || obj === undefined){ container.innerHTML = '<div class="l">нет данных</div>'; return; }
   if(typeof obj !== 'object'){
@@ -677,14 +705,20 @@ function renderKV(container, obj){
     return;
   }
   const entries = Object.entries(obj).filter(([k,v]) => typeof v !== 'object' || v === null);
-  if(!entries.length){ container.innerHTML = '<div class="l">нет плоских полей</div>'; return; }
+  if(!entries.length){ container.innerHTML = '<div class="l">нет плоских полей — см. сырой JSON</div>'; return; }
   container.innerHTML = entries.map(([k,v]) => `
     <div class="kv">
-      <div class="n">${escapeHtml(formatMaybeNumber(v))}</div>
-      <div class="l">${escapeHtml(k)}</div>
+      <div class="n">${escapeHtml(formatMaybeNumber(v, k))}</div>
+      <div class="l">${escapeHtml(labelFor(k))}</div>
     </div>`).join('');
 }
-function formatMaybeNumber(v){
+const VALUE_LABELS = {
+  side: { sell: 'Продажа', buy: 'Покупка' },
+  mode: { smart: 'Умный', market: 'Рыночная', mean: 'Средняя', wm: 'Взвеш. медиана', min: 'Минимальная', max: 'Максимальная' }
+};
+
+function formatMaybeNumber(v, key){
+  if(key && VALUE_LABELS[key] && VALUE_LABELS[key][v]) return VALUE_LABELS[key][v];
   if(typeof v === 'number' && Math.abs(v) >= 1000) return fmtPrice(v);
   return String(v);
 }
@@ -715,6 +749,7 @@ function extractSeries(json){
 }
 
 function drawChart(points){
+  window.__lastChartPoints = points;
   const holder = document.getElementById('chartHolder');
   const emptyBox = document.getElementById('chartEmpty');
   if(!points.length){
@@ -725,7 +760,8 @@ function drawChart(points){
   emptyBox.style.display = 'none';
   points.sort((a,b) => a.t - b.t);
 
-  const W = 1000, H = 220, PAD = 30;
+  const W = Math.max(320, Math.round(holder.clientWidth || holder.getBoundingClientRect().width || 600));
+  const H = 220, PAD_TOP = 16, PAD_BOTTOM = 26, PAD_LEFT = 64, PAD_RIGHT = 12;
   const minT = points[0].t, maxT = points[points.length-1].t;
   const vals = points.map(p => p.v);
   let minV = Math.min(...vals), maxV = Math.max(...vals);
@@ -733,17 +769,17 @@ function drawChart(points){
   const spanT = (maxT - minT) || 1;
   const spanV = (maxV - minV) || 1;
 
-  const x = t => PAD + ((t - minT) / spanT) * (W - PAD*2);
-  const y = v => H - PAD - ((v - minV) / spanV) * (H - PAD*2);
+  const x = t => PAD_LEFT + ((t - minT) / spanT) * (W - PAD_LEFT - PAD_RIGHT);
+  const y = v => H - PAD_BOTTOM - ((v - minV) / spanV) * (H - PAD_TOP - PAD_BOTTOM);
 
   const linePath = points.map((p,i) => `${i===0?'M':'L'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-  const areaPath = linePath + ` L${x(points[points.length-1].t).toFixed(1)},${H-PAD} L${x(points[0].t).toFixed(1)},${H-PAD} Z`;
+  const areaPath = linePath + ` L${x(points[points.length-1].t).toFixed(1)},${H-PAD_BOTTOM} L${x(points[0].t).toFixed(1)},${H-PAD_BOTTOM} Z`;
 
   const gridLines = [0,0.25,0.5,0.75,1].map(f => {
-    const yy = PAD + f * (H - PAD*2);
+    const yy = PAD_TOP + f * (H - PAD_TOP - PAD_BOTTOM);
     const val = maxV - f * spanV;
-    return `<line class="grid-line" x1="${PAD}" y1="${yy}" x2="${W-PAD}" y2="${yy}"></line>
-            <text class="axis-label" x="4" y="${yy+3}">${fmtPrice(Math.round(val))}</text>`;
+    return `<line class="grid-line" x1="${PAD_LEFT}" y1="${yy}" x2="${W-PAD_RIGHT}" y2="${yy}"></line>
+            <text class="axis-label" x="6" y="${yy+3}">${fmtPrice(Math.round(val))}</text>`;
   }).join('');
 
   const dateLabel = ts => new Date(ts * (ts < 2e10 ? 1000 : 1)).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
@@ -759,8 +795,8 @@ function drawChart(points){
       ${gridLines}
       <path class="price-area" d="${areaPath}"></path>
       <path class="price-line" d="${linePath}"></path>
-      <text class="axis-label" x="${PAD}" y="${H-8}">${dateLabel(minT)}</text>
-      <text class="axis-label" x="${W-PAD-40}" y="${H-8}">${dateLabel(maxT)}</text>
+      <text class="axis-label" x="${PAD_LEFT}" y="${H-8}">${dateLabel(minT)}</text>
+      <text class="axis-label" x="${W-PAD_RIGHT-40}" y="${H-8}">${dateLabel(maxT)}</text>
     </svg>`;
 }
 
