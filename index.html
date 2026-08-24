@@ -276,7 +276,7 @@
 
   <div class="stat-row" id="stats">
     <div class="stat"><div class="n" id="stat-sellers">—</div><div class="l">продавцов</div></div>
-    <div class="stat"><div class="n" id="stat-listings">—</div><div class="l">лотов всего</div></div>
+    <div class="stat"><div class="n" id="stat-listings">—</div><div class="l">предметов всего</div></div>
     <div class="stat"><div class="n" id="stat-queue">—</div><div class="l">очередь</div></div>
     <div class="stat"><div class="n" id="stat-updated">—</div><div class="l">обновлено</div></div>
   </div>
@@ -290,7 +290,7 @@
 
 <div class="tab-panel active" id="tab-market">
 <div class="controls">
-  <input type="text" id="search" placeholder="Поиск по ID лота или продавцу…">
+  <input type="text" id="search" placeholder="Поиск по ID предмета или продавцу…">
   <div class="seg" id="typeSeg">
     <button data-type="all" class="active">Все</button>
     <button data-type="sell">Продажа</button>
@@ -308,11 +308,12 @@
       <thead>
         <tr>
           <th data-key="username">Продавец</th>
-          <th data-key="itemId">ID лота</th>
+          <th data-key="itemId">ID предмета</th>
           <th data-key="type">Тип</th>
           <th data-key="price">Цена</th>
           <th data-key="count">Кол-во</th>
           <th data-key="server">Сервер</th>
+          <th data-key="lavkaUid">Лавка (UID)</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -456,6 +457,7 @@ function flatten(json){
           price: prices[i] ?? 0,
           count: counts[i] ?? 0,
           server: seller.serverId,
+          lavkaUid: seller.LavkaUid,
           ostime: seller.ostime
         });
       });
@@ -564,10 +566,10 @@ function render(){
     const firstLot = g.lots[0];
     
     html += `<tr class="seller-group-row${isOpen?' open':''}" data-seller="${escapeHtml(g.username)}">
-      <td colspan="6">
+      <td colspan="7">
         <span class="sg-arrow">▶</span>
         <span class="sg-name">${escapeHtml(g.username)}</span>
-        <span class="sg-count">${g.lots.length} ${g.lots.length===1?'лот':g.lots.length<5?'лота':'лотов'} · ${serverLabel(firstLot.server)}</span>
+        <span class="sg-count">${g.lots.length} ${g.lots.length===1?'предмет':g.lots.length<5?'предмета':'предметов'} · ${serverLabel(firstLot.server)}</span>
       </td>
     </tr>`;
     
@@ -579,6 +581,7 @@ function render(){
         <td class="price">${fmtPrice(r.price)}</td>
         <td class="qty">${fmtQty(r.count)}</td>
         <td class="seller">${serverLabel(r.server)}</td>
+        <td class="seller">${r.lavkaUid !== undefined ? 'UID ' + r.lavkaUid : '—'}</td>
       </tr>`;
     });
   });
@@ -600,7 +603,7 @@ function render(){
   });
 
   const totalPages = Math.ceil(totalGroups / PAGE_SIZE);
-  document.getElementById('pageInfo').textContent = `${filtered.length} лотов · ${totalGroups} продавцов · страница ${page+1} из ${totalPages}`;
+  document.getElementById('pageInfo').textContent = `${filtered.length} предметов · ${totalGroups} продавцов · страница ${page+1} из ${totalPages}`;
   document.getElementById('prevBtn').disabled = page === 0;
   document.getElementById('nextBtn').disabled = page >= totalPages - 1;
 
