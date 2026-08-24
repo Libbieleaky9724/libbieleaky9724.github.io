@@ -249,11 +249,6 @@
   svg.chart .price-line{fill:none; stroke:var(--gold); stroke-width:2;}
   svg.chart .price-area{fill:url(#chartGradient); opacity:.5;}
   svg.chart .axis-label{fill:var(--text-dim); font-size:9px; font-family:'JetBrains Mono',monospace;}
-  .raw-toggle{color:var(--gold-dim); font-size:11px; cursor:pointer; text-decoration:underline; margin-top:6px; display:inline-block;}
-  pre.raw{
-    background:var(--bg-row); border:1px solid var(--line); border-radius:var(--radius);
-    padding:10px; font-size:11px; color:var(--text-dim); overflow:auto; max-height:280px; display:none;
-  }
 </style>
 </head>
 <body>
@@ -349,23 +344,17 @@
       <div class="card">
         <h3 id="itemInfoTitle">Информация о предмете</h3>
         <div class="kv-grid" id="itemInfoGrid"></div>
-        <a class="raw-toggle" data-target="itemInfoRaw">показать сырой JSON</a>
-        <pre class="raw" id="itemInfoRaw"></pre>
       </div>
 
       <div class="card">
         <h3>Средняя цена</h3>
         <div class="kv-grid" id="avgGrid"></div>
-        <a class="raw-toggle" data-target="avgRaw">показать сырой JSON</a>
-        <pre class="raw" id="avgRaw"></pre>
       </div>
 
       <div class="card">
         <h3>История цены</h3>
         <div id="chartHolder"></div>
         <div id="chartEmpty" class="empty" style="display:none; padding:24px;">Для этого периода нет данных истории.</div>
-        <a class="raw-toggle" data-target="seriesRaw">показать сырой JSON</a>
-        <pre class="raw" id="seriesRaw"></pre>
       </div>
 
     </div>
@@ -681,15 +670,6 @@ async function apiGet(path){
   return res.json();
 }
 
-document.querySelectorAll('.raw-toggle').forEach(a => {
-  a.addEventListener('click', () => {
-    const el = document.getElementById(a.dataset.target);
-    const open = el.style.display === 'block';
-    el.style.display = open ? 'none' : 'block';
-    a.textContent = open ? 'показать сырой JSON' : 'скрыть сырой JSON';
-  });
-});
-
 function renderKV(container, obj){
   if(obj === null || obj === undefined){ container.innerHTML = '<div class="l">нет данных</div>'; return; }
   if(typeof obj !== 'object'){
@@ -697,7 +677,7 @@ function renderKV(container, obj){
     return;
   }
   const entries = Object.entries(obj).filter(([k,v]) => typeof v !== 'object' || v === null);
-  if(!entries.length){ container.innerHTML = '<div class="l">нет плоских полей — см. сырой JSON</div>'; return; }
+  if(!entries.length){ container.innerHTML = '<div class="l">нет плоских полей</div>'; return; }
   container.innerHTML = entries.map(([k,v]) => `
     <div class="kv">
       <div class="n">${escapeHtml(formatMaybeNumber(v))}</div>
@@ -725,9 +705,7 @@ function extractSeries(json){
   return raw.map(p => {
     if(Array.isArray(p)) return { t: Number(p[0]), v: Number(p[1]) };
     if(typeof p === 'object'){
-      // время: приоритет unix-таймстампу (ts), т.к. p.t часто строка-дата вида "2026-08-20 22:00"
       const t = p.ts ?? p.timestamp ?? p.ostime ?? (typeof p.t === 'number' ? p.t : undefined) ?? p.time;
-      // цена: приоритет market_price, затем прочие возможные поля
       const v = p.market_price ?? p.v ?? p.value ?? p.price ?? p.avg_price ?? p.avg
                 ?? p.median ?? p.wmedian ?? p.median_unique ?? p.mean;
       return { t: Number(t), v: Number(v) };
@@ -807,14 +785,12 @@ async function loadItem(){
     document.getElementById('itemInfoTitle').textContent = `Предмет #${id}`;
     if(info.status === 'fulfilled'){
       renderKV(document.getElementById('itemInfoGrid'), info.value);
-      document.getElementById('itemInfoRaw').textContent = JSON.stringify(info.value, null, 2);
     } else {
       document.getElementById('itemInfoGrid').innerHTML = '<div class="l">не удалось получить</div>';
     }
 
     if(avg.status === 'fulfilled'){
       renderKV(document.getElementById('avgGrid'), avg.value);
-      document.getElementById('avgRaw').textContent = JSON.stringify(avg.value, null, 2);
     } else {
       document.getElementById('avgGrid').innerHTML = '<div class="l">не удалось получить</div>';
     }
@@ -822,7 +798,6 @@ async function loadItem(){
     if(series.status === 'fulfilled'){
       const points = extractSeries(series.value);
       drawChart(points);
-      document.getElementById('seriesRaw').textContent = JSON.stringify(series.value, null, 2);
     } else {
       drawChart([]);
     }
