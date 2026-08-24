@@ -32,8 +32,6 @@
   }
   .display{font-family:'Archivo Expanded', sans-serif;}
 
-
-
   header{
     padding:28px 24px 18px;
     max-width:1180px;
@@ -290,7 +288,6 @@
   <button class="tab-btn" data-tab="overview">Все предметы</button>
 </div>
 
-<!-- ===== TAB: РЫНОК ===== -->
 <div class="tab-panel active" id="tab-market">
 <div class="controls">
   <input type="text" id="search" placeholder="Поиск по ID лота или продавцу…">
@@ -408,12 +405,10 @@
   <div class="overview-grid" id="overviewGrid"></div>
 </div>
 
-
 <script>
 
 const API_BASE = "https://orange-mouse-a8e4.ermremvalawe-kaemawem.workers.dev";
 const API_URL = API_BASE + "/x/fp2xyqt1vc";
-// ============================================
 
 const PAGE_SIZE = 100;
 let rows = [];
@@ -425,10 +420,10 @@ let typeFilter = "all";
 let serverFilter = "all";
 
 function fmtPrice(n){
-  if(n >= 1e9) return (n/1e9).toFixed(2).replace(/\.00$/,'') + "\u00a0млрд";
-  if(n >= 1e6) return (n/1e6).toFixed(2).replace(/\.00$/,'') + "\u00a0млн.";
-  if(n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + "\u00a0тыс.";
-  return String(n);
+  if(n >= 1e9) return "$" + (n/1e9).toFixed(2).replace(/\.00$/,'') + "\u00a0млрд";
+  if(n >= 1e6) return "$" + (n/1e6).toFixed(2).replace(/\.00$/,'') + "\u00a0млн.";
+  if(n >= 1e3) return "$" + (n/1e3).toFixed(1).replace(/\.0$/,'') + "\u00a0тыс.";
+  return "$" + String(n);
 }
 function fmtQty(n){
   if(n >= 1e9) return (n/1e9).toFixed(2).replace(/\.00$/,'') + "\u00a0млрд";
@@ -508,8 +503,6 @@ function updateStats(json){
   }
 }
 
-
-
 function applyFilters(){
   const q = document.getElementById('search').value.trim().toLowerCase();
   filtered = rows.filter(r => {
@@ -529,7 +522,6 @@ function applyFilters(){
   render();
 }
 
-// Хранит состояние открытых групп по продавцу
 const openSellers = new Set();
 
 function render(){
@@ -548,7 +540,7 @@ function render(){
   table.style.display = 'table';
   pager.style.display = 'flex';
 
-  // Группируем по продавцу, сохраняя порядок сортировки
+  
   const groups = [];
   const groupMap = new Map();
   filtered.forEach(r => {
@@ -560,7 +552,7 @@ function render(){
     groupMap.get(r.username).lots.push(r);
   });
 
-  // Пагинация по группам
+  
   const totalGroups = groups.length;
   const start = page * PAGE_SIZE;
   const pageGroups = groups.slice(start, start + PAGE_SIZE);
@@ -570,7 +562,7 @@ function render(){
     const groupId = `sg-${gi}-${escapeHtml(g.username)}`;
     const isOpen = openSellers.has(g.username);
     const firstLot = g.lots[0];
-    // Шапка группы
+    
     html += `<tr class="seller-group-row${isOpen?' open':''}" data-seller="${escapeHtml(g.username)}">
       <td colspan="6">
         <span class="sg-arrow">▶</span>
@@ -578,7 +570,7 @@ function render(){
         <span class="sg-count">${g.lots.length} ${g.lots.length===1?'лот':g.lots.length<5?'лота':'лотов'} · ${serverLabel(firstLot.server)}</span>
       </td>
     </tr>`;
-    // Строки лотов
+    
     g.lots.forEach(r => {
       html += `<tr class="seller-sub-row${isOpen?' visible':''}">
         <td class="seller">${escapeHtml(r.username)}</td>
@@ -592,13 +584,13 @@ function render(){
   });
   tbody.innerHTML = html;
 
-  // Клик по шапке группы — раскрыть/свернуть
+  
   tbody.querySelectorAll('.seller-group-row').forEach(row => {
     row.addEventListener('click', () => {
       const seller = row.dataset.seller;
       const isNowOpen = row.classList.toggle('open');
       if(isNowOpen) openSellers.add(seller); else openSellers.delete(seller);
-      // Показать/скрыть sub-rows
+      
       let next = row.nextElementSibling;
       while(next && next.classList.contains('seller-sub-row')){
         next.classList.toggle('visible', isNowOpen);
@@ -669,8 +661,6 @@ document.querySelectorAll('thead th').forEach(th => {
   });
 });
 
-
-
 loadData();
 setInterval(loadData, 60000);
 
@@ -719,7 +709,7 @@ function formatMaybeNumber(v){
 }
 
 function extractSeries(json){
-  // пытаемся распознать разные возможные форматы ответа /api/series
+  
   if(!json) return [];
   let raw = json;
   if(Array.isArray(json.series)) raw = json.series;
@@ -841,7 +831,6 @@ async function loadItem(){
 }
 document.getElementById('itemLookupBtn').addEventListener('click', loadItem);
 document.getElementById('itemIdInput').addEventListener('keydown', e => { if(e.key === 'Enter') loadItem(); });
-
 
 let overviewLoadedOnce = false;
 let overviewData = [];
