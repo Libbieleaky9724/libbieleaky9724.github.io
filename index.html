@@ -725,8 +725,11 @@ function extractSeries(json){
   return raw.map(p => {
     if(Array.isArray(p)) return { t: Number(p[0]), v: Number(p[1]) };
     if(typeof p === 'object'){
-      const t = p.t ?? p.time ?? p.ts ?? p.timestamp ?? p.ostime;
-      const v = p.v ?? p.value ?? p.price ?? p.avg ?? p.avg_price;
+      // время: приоритет unix-таймстампу (ts), т.к. p.t часто строка-дата вида "2026-08-20 22:00"
+      const t = p.ts ?? p.timestamp ?? p.ostime ?? (typeof p.t === 'number' ? p.t : undefined) ?? p.time;
+      // цена: приоритет market_price, затем прочие возможные поля
+      const v = p.market_price ?? p.v ?? p.value ?? p.price ?? p.avg_price ?? p.avg
+                ?? p.median ?? p.wmedian ?? p.median_unique ?? p.mean;
       return { t: Number(t), v: Number(v) };
     }
     return null;
